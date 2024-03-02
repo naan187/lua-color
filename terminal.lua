@@ -19,8 +19,8 @@
 -- to work on all *nix systems  
 -- [More information](https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_\(Select_Graphic_Rendition\)_parameters)
 
-local Color = require(... .. ".lua-color")
-local utils = require(... .. ".lua-color.utils")
+local Color = require(... .. ".init")
+local utils = require(... .. ".utils")
 
 local escape = "\x1b["
 
