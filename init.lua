@@ -173,12 +173,94 @@ end
 function Color:set(value)
   assert(value)
 
-  -- from Color
-  if value.__is_color then
-    self.r = value.r
-    self.g = value.g
-    self.b = value.b
-    self.a = value.a
+  if type(value) == "table" then
+    -- from Color
+    if value.__is_color then
+      self.r = value.r
+      self.g = value.g
+      self.b = value.b
+      self.a = value.a
+    -- table with rgb
+    elseif value[1] ~= nil then
+      self.r = value[1]
+      self.g = value[2]
+      self.b = value[3]
+      self.a = value[4] or self.a or 1
+    elseif value.r ~= nil then
+      self.r = value.r
+      self.g = value.g or self.g
+      self.b = value.b or self.b
+      self.a = value.a or self.a
+
+    elseif value.c ~= nil then
+      local k = 1 - value.k
+      self.r = (1 - value.c) * k
+      self.g = (1 - value.m) * k
+      self.b = (1 - value.y) * k
+      self.a = 1
+
+    -- table with hs[vl]
+    elseif value.h ~= nil then
+      if value.w ~= nil then -- hwb
+        value.v = 1 - value.b
+        value.s = 1 - value.w / value.v
+      end
+
+      local hue, saturation = value.h, value.s
+      assert(hue ~= nil, saturation ~= nil)
+
+      local r, g, b = 0, 0, 0
+
+      if value.v ~= nil then
+        local v = value.v
+        local chroma = saturation * v
+        r, g, b = hcm_to_rgb(hue, chroma, v - chroma)
+
+      elseif value.l ~= nil then
+        local lightness = value.l
+        local chroma = (1 - math.abs(2 * lightness - 1)) * saturation
+        r, g, b = hcm_to_rgb(hue, chroma, lightness - chroma / 2)
+      end
+
+      self.r = r
+      self.g = g
+      self.b = b
+      self.a = value.a or self.a or 1
+
+    else -- Single set mode
+      if value.red then self.r = value.red end
+      if value.green then self.g = value.green end
+      if value.blue then self.b = value.blue end
+      if value.alpha then self.a = value.alpha end
+
+      if value.lightness then
+        local h, s, l = self:hsl()
+        self:set {h= value.hue or h, s= value.saturation or s, l= value.lightness or l}
+        value.hue = nil
+        value.saturation = nil
+      end
+
+      if value.whiteness or value.blackness then
+        local h, w, b = self:hwb()
+        self:set {h= value.hue or h, w= value.whiteness or w, b= value.backness or b}
+        value.hue = nil
+      end
+
+      if value.hue or value.saturation or value.value then
+        local h, s, v = self:hsv()
+        self:set {h= value.hue or h, s= value.saturation or s, v= value.value or v}
+      end
+
+      if value.cyan or value.magenta or value.yellow or value.key then
+        local c, m, y, k = self:cmyk()
+        self:set {
+          c = value.cyan or c,
+          m = value.magenta or m,
+          y = value.yellow or y,
+          k = value.key or k
+        }
+      end
+    end
 
 
   elseif type(value) == "string" then
@@ -318,88 +400,8 @@ function Color:set(value)
     self.r = tonumber(r, 16) / div
     self.g = tonumber(g, 16) / div
     self.b = tonumber(b, 16) / div
-    self.a = a ~= nil and tonumber(a, 16) / div.a or 1
+    self.a = a ~= nil and tonumber(a, 16) / div or 1
 
-  -- table with rgb
-  elseif value[1] ~= nil then
-    self.r = value[1]
-    self.g = value[2]
-    self.b = value[3]
-    self.a = value[4] or self.a or 1
-  elseif value.r ~= nil then
-    self.r = value.r
-    self.g = value.g or self.g
-    self.b = value.b or self.b
-    self.a = value.a or self.a
-
-  elseif value.c ~= nil then
-    local k = 1 - value.k
-    self.r = (1 - value.c) * k
-    self.g = (1 - value.m) * k
-    self.b = (1 - value.y) * k
-    self.a = 1
-
-  -- table with hs[vl]
-  elseif value.h ~= nil then
-    if value.w ~= nil then -- hwb
-      value.v = 1 - value.b
-      value.s = 1 - value.w / value.v
-    end
-
-    local hue, saturation = value.h, value.s
-    assert(hue ~= nil, saturation ~= nil)
-
-    local r, g, b = 0, 0, 0
-
-    if value.v ~= nil then
-      local v = value.v
-      local chroma = saturation * v
-      r, g, b = hcm_to_rgb(hue, chroma, v - chroma)
-
-    elseif value.l ~= nil then
-      local lightness = value.l
-      local chroma = (1 - math.abs(2 * lightness - 1)) * saturation
-      r, g, b = hcm_to_rgb(hue, chroma, lightness - chroma / 2)
-    end
-
-    self.r = r
-    self.g = g
-    self.b = b
-    self.a = value.a or self.a or 1
-
-  else -- Single set mode
-    if value.red then self.r = value.red end
-    if value.green then self.g = value.green end
-    if value.blue then self.b = value.blue end
-    if value.alpha then self.a = value.alpha end
-
-    if value.lightness then
-      local h, s, l = self:hsl()
-      self:set {h= value.hue or h, s= value.saturation or s, l= value.lightness or l}
-      value.hue = nil
-      value.saturation = nil
-    end
-
-    if value.whiteness or value.blackness then
-      local h, w, b = self:hwb()
-      self:set {h= value.hue or h, w= value.whiteness or w, b= value.backness or b}
-      value.hue = nil
-    end
-
-    if value.hue or value.saturation or value.value then
-      local h, s, v = self:hsv()
-      self:set {h= value.hue or h, s= value.saturation or s, v= value.value or v}
-    end
-
-    if value.cyan or value.magenta or value.yellow or value.key then
-      local c, m, y, k = self:cmyk()
-      self:set {
-        c = value.cyan or c,
-        m = value.magenta or m,
-        y = value.yellow or y,
-        k = value.key or k
-      }
-    end
   end
 
   local r, g, b, a =
@@ -986,7 +988,7 @@ end
 --
 -- @usage if Color.isColor(color) then print "It's a color!" end
 function Color.isColor(color)
-  return color ~= nil and color.__is_color == true
+  return type(color) == "table" and color.__is_color == true
 end
 
 
